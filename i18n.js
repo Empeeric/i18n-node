@@ -37,7 +37,7 @@ i18n.configure = function(opt){
     {
         for(var i=0; i<results.length; i++)
         {
-            i18n.locales[results[i].locale] = results[i].text;
+            locales[results[i].locale] = results[i].text;
         }
     });
     // you may register helpers in global scope, up to you
