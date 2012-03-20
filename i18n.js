@@ -19,44 +19,33 @@ var vsprintf = require('sprintf').vsprintf,
     cookiename = null,
 	debug = false;
     directory = './locales';
+	
+var Model;
+
 
 // public exports
 var i18n = exports;
 
+i18n.setModel = function(model){
+	Model = model;
+};
+
 i18n.version = '0.3.4';
 
-i18n.configure = function(opt) {
+i18n.configure = function(opt){
+    Model.find({},function(err,results)
+    {
+        for(var i=0; i<results.length; i++)
+        {
+            i18n.locales[results[i].locale] = results[i].text;
+        }
+    });
     // you may register helpers in global scope, up to you
-    if (typeof opt.register === 'object') {
+    if( typeof opt.register === 'object' ){
         opt.register.__ = i18n.__;
         opt.register.__n = i18n.__n;
-        opt.register.getLocale = i18n.getLocale;
     }
-
-    // sets a custom cookie name to parse locale settings from
-    if (typeof opt.cookie === 'string') {
-        cookiename = opt.cookie;
-    }
-    
-	// where to store json files
-    if (typeof opt.directory === 'string') {
-      	directory = opt.directory;
-    }else{
-		directory = './locales';
-	}
-
-	// enabled some debug output
-	if (opt.debug) {
-		debug = opt.debug;
-	}
-	
-	// implicitly read all locales
-    if (typeof opt.locales === 'object') {
-        opt.locales.forEach(function(l) {
-            read(l);
-        });
-    }
-}
+};
 
 i18n.init = function(request, response, next) {
     if (typeof request === 'object') {
@@ -215,48 +204,17 @@ function translate(locale, singular, plural) {
 
 // try reading a file
 function read(locale) {
-    var localeFile = {};
-    var file = locate(locale);
-    // try to read from FS
-    try {
-        localeFile = fs.readFileSync(file);
-        console.log('read ' + file + ' for locale: ' + locale);
-    } catch(e) {
-        console.log('initializing ' + file);
-        write(locale);
-    }
-
-    // try to parse to JSON
-    try {
-        locales[locale] = JSON.parse(localeFile);
-    } catch(e) {
-        console.error('unable to parse locales from file (maybe ' + file + ' is empty or invalid json?): ', e);
-    }
-}
+    locales[locale] = {};
+    write(locale);
+};
 
 // try writing a file in a created directory
 function write(locale) {
-    try {
-        stats = fs.lstatSync(directory);
-    } catch(e) {
-        if (debug) console.log('creating locales dir in: ' + directory);
-        fs.mkdirSync(directory, 0755);
-    }
-    var target = locate(locale),
-        tmp = target + ".tmp";
-
-    // first time init has an empty file
-    if(!locales[locale]){
-        locales[locale] = {};
-    }
-
-    fs.writeFileSync(tmp, JSON.stringify(locales[locale], null, "\t"), "utf8");
-    fs.stat(tmp, function(err, stat) {
-        if (err) throw err;
-        fs.rename(tmp, target);
+    Model.update({locale:locale},{text:locales[locale]},{upsert:true},function(err,results)
+    {
+        console.log('finished writing locale to DB ' + locale);
     });
-
-}
+};
 
 // basic normalization of filepath
 function locate(locale) {
