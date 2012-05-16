@@ -30,7 +30,13 @@ i18n.setModel = function(model){
 	Model = model;
 };
 
+i18n.locales = locales;
+
 i18n.version = '0.3.4';
+
+i18n.is_ready = false;
+
+i18n.on_ready = [];
 
 i18n.configure = function(opt){
     Model.find({},function(err,results)
@@ -39,12 +45,24 @@ i18n.configure = function(opt){
         {
             locales[results[i].locale] = results[i].text;
         }
+        i18n.is_ready = true;
+        i18n.on_ready.forEach(function(cbk)
+        {
+            cbk();
+        });
     });
     // you may register helpers in global scope, up to you
     if( typeof opt.register === 'object' ){
         opt.register.__ = i18n.__;
         opt.register.__n = i18n.__n;
     }
+};
+
+i18n.ready = function(callback)
+{
+    i18n.on_ready.push(callback);
+    if(i18n.is_ready)
+        callback();
 };
 
 i18n.init = function(request, response, next) {
@@ -204,12 +222,27 @@ function translate(locale, singular, plural) {
 
 // try reading a file
 function read(locale) {
-    locales[locale] = {};
+    locales[locale] = cloneObject(locales['en']) || {};
     write(locale);
 };
 
+function cloneObject(obj) {
+    if(!obj)
+        return obj;
+    var clone = {};
+    for(var i in obj) {
+        if(typeof(obj[i])=="object")
+            clone[i] = cloneObject(obj[i]);
+        else
+            clone[i] = obj[i];
+    }
+    return clone;
+}
+
 // try writing a file in a created directory
 function write(locale) {
+    if(!i18n.is_ready)
+        return;
     Model.update({locale:locale},{text:locales[locale]},{upsert:true},function(err,results)
     {
         console.log('finished writing locale to DB ' + locale);

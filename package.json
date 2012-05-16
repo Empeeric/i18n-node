@@ -1,7 +1,7 @@
 {
     "name": "i18n-mongoose",
     "description": "lightweight simple translation module with mongoose json storage",
-    "version": "0.3.3",
+    "version": "0.3.32",
     "homepage": "http://github.com/Empeeric/i18n-node",
     "repository": {
         "type": "git",
