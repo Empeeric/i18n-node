@@ -194,6 +194,12 @@ function guessLanguage(request) {
 
 // read locale file, translate a msg and write to fs if new
 function translate(locale, singular, plural) {
+    var original_singular = singular;
+    var original_plural = plural;
+    singular = hash_key(singular);
+    if(plural)
+        plural = hash_key(plural);
+
     if (locale === undefined) {
       if (debug) console.warn("WARN: No locale found - check the context of the call to $__?");
       locale = defaultLocale;
@@ -206,19 +212,28 @@ function translate(locale, singular, plural) {
     if (plural) {
         if (!locales[locale][singular]) {
             locales[locale][singular] = {
-                'one': singular,
-                'other': plural
+                'one': original_singular,
+                'other': original_plural
             };
             write(locale);
         }
     }
     
     if (!locales[locale][singular]) {
-        locales[locale][singular] = singular;
+        locales[locale][singular] = original_singular;
         write(locale);
     }
     return locales[locale][singular];
 }
+
+var crypto = require('crypto');
+function hash_key(str) {
+    if(str.length > 50)
+        return crypto.createHash("md5").update(str.toString()).digest("hex");
+    return str;
+
+}
+
 
 // try reading a file
 function read(locale) {
@@ -245,6 +260,8 @@ function write(locale) {
         return;
     Model.update({locale:locale},{text:locales[locale]},{upsert:true},function(err,results)
     {
+        if(err)
+            console.error(err);
         console.log('finished writing locale to DB ' + locale);
     });
 };
